@@ -16,7 +16,7 @@
 #
 ##############################################################
 
-# Use implicit remoting to connect to Susquehanna for Exchange cmdlets (and account creation)
+# Use implicit remoting to connect to server for Exchange cmdlets (and account creation)
 # import the provision.variables.ps1 file
 $cwd = split-path $myinvocation.mycommand.path
 $variablesPath = Join-path $cwd  provision.variables.ps1
@@ -60,14 +60,6 @@ function ProvisionInputCSV($filename) {
 	
 	foreach ($user in $users) {
 		
-		# do some input cleanup for the more complicated unit names
-		switch -regex ($user.Unit) {
-			"Consumer" {$user.Unit = "Consumer Rights Project"}
-			"(Elder)|(Health)" {$user.Unit = "Elder, Health, Disability"}
-			"(AOU)|(Asian)" {$user.Unit = "Asian Outreach Unit"}
-			"Cambridge" {$user.Unit = "CASLS"}
-			"University" {$user.Unit = "BU"} 
-		}
 		
 		$ht = @{'givenName'=	$user."First Name".trimEnd();
 				'sn'=			$user."Last Name".trimEnd();
