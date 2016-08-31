@@ -3,7 +3,6 @@
 #	License the account on Office 365
 #	Give Mimecast permission to index the mailbox
 #	Send a welcome message
-# 	This should be set up to run as a scheduled task using an account with proper permissions in Office365 and local domain
 
 
 #####################################################
@@ -37,7 +36,7 @@ Function update-office365-license ($userPrincipalName) {
 	Set-MsolUserLicense -UserPrincipalName $UserPrincipalName -AddLicenses $Office365AccountSkuId -LicenseOptions $LicenseOptions
 }
 
-# License the account and set user permissions for Mimecast to read the mailbox
+# License the account and set user permissions for Mimecast to read the mailbox, as well as turn off junk mail filtering
 # See: http://kb.mimecast.com/Mimecast_Knowledge_Base/Getting_Started_with_Mimecast/Implementation/Mimecast_Synchronization_Engine/06_Preparing_for_Exchange_Services/Configuring_the_Mimecast_Synchronization_Engine_for_Office_365
 function update-alloffice365licenses ($users) {
 	connect-office365
@@ -47,6 +46,7 @@ function update-alloffice365licenses ($users) {
 		update-office365-license -userPrincipalName ($user.userPrincipalName)
 
 		add-mailboxpermission -identity ($user.userPrincipalName) -user $mimecastMSEServiceAccount -AccessRights fullaccess -InheritanceType all
+			
 	}
 	
 	write-host "Finished license activation attempt. If you see any license activation errors above, try manually activating the Office365 licenses later."
@@ -99,10 +99,16 @@ Function send-emailtoAllUsers ($users) {
 ############################################################
 # Processing
 connect-office365
-[array]$users = get-msoluser -unlicensedusersonly -enabledfilter enabledonly -domain $emaildomain
+[array]$users = get-msoluser -unlicensedusersonly -enabledfilter enabledonly -domain gbls.org
 
 update-alloffice365licenses -users $users
 send-emailtoAllUsers -users $users
+
+# turn off the junk email filter 1x/day for anybody who has logged on to Outlook Web App
+get-mailbox | Set-MailboxJunkEmailConfiguration -enabled $false
+
+# turn off clutter
+get-mailbox | set-clutter -Enable $false
 
 ###############################
 # Cleanup

@@ -59,7 +59,7 @@ $pathToKeePassDB = "\\domain\shares\SharedSite2\Administration\Personnel\New Use
 #	Folder is the subfolder where non-student shared folders are created
 #	students is the subfolder where student shared folders are created
 #	template is the SamAccountName of the account that will be used as a template (including group membership)
-$depts =@{
+$global:depts =@{
 			"Administration" =  
 				@{	"OU" = "OU=Administration,OU=Site2,OU=_Domain_users,DC=domain,DC=Local";
 					"folder" = "Administration\";

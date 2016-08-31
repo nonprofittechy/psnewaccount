@@ -1,0 +1,6 @@
+archive/
+backup/
+account creation logs/
+logs/
+*KeePass.csv
+*Creation.txt
