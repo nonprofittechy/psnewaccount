@@ -46,6 +46,7 @@ new-legalserveraccount -adminUsername [USERNAME] -adminPassword [PASSWORD] -logi
 .LINK
 https://github.com/nonprofittechy/psnewaccount
 #>
+[CmdletBinding()]
 Param(
   [Parameter(Mandatory = $True,HelpMessage="HomePage URL")][string]$loginURL,
   [Parameter(Mandatory = $True,HelpMessage="New User Process URL")][string]$newUserURL,
@@ -70,6 +71,13 @@ Begin {
   # Legal Server displays a list with the class name "form_errors" if anything goes wrong
   function get-legalservererrors ($ie) {
     return ($ie.document.IHTMLDocument3_getElementsByTagName("ul")) | %{if ($_.className -eq "form_errors") {$_.innerHtml} }
+  }
+  
+  function test-legalservererrors ($ie) {
+    $e = get-legalservererrors $ie
+    if ( $e ) {
+      throw $e -replace '<[^>]+>|(\&nbsp\;)','' # clean the HTML tags from the error in Legal Server
+    }
   }
   
   ########################################################
@@ -100,7 +108,9 @@ Begin {
 
   # Create new IE COM object and login to Legal Server
   $ie = New-Object -com internetexplorer.application;
-  #$ie.visible = $true;
+  if ($PSBoundParameters.debug) {
+    $ie.visible = $true;
+  }
   $ie.navigate($loginUrl);
   while ($ie.Busy -eq $true) { Start-Sleep -Seconds 1; }
   
@@ -110,7 +120,7 @@ Begin {
     ($ie.document.IHTMLDocument3_getElementsByName($fields['login_password']) |select -first 1).value = $adminPassword
     ($ie.document.IHTMLDocument3_getElementsByName($fields['login_submit']) |select -first 1).click()
   } elseif ( $ie.Document.IHTMLDocument3_getElementsByTagName("a") | where {$_.innerText -eq "Admin"} | select -first 1) {
-    continue;
+    # we are already logged in
   } else {
     throw "Something went wrong trying to access the main login page."
   }
@@ -120,8 +130,11 @@ Begin {
 }
 
 Process {
+  try {
+
   $ie.navigate($newUserURL);
   while ($ie.Busy -eq $true) { Start-Sleep -Seconds 1; }
+  
   # Page 1 - System Information
   ($ie.document.IHTMLDocument3_getElementsByName($fields['user_login']) |select -first 1).value = ($username.tolower())
   if ($accountExpirationDate) {
@@ -132,18 +145,14 @@ Process {
   ($ie.document.IHTMLDocument3_getElementsByName($fields['user_role']) |select -first 1).value = $LSRoleID
   ($ie.document.IHTMLDocument3_getElementsByName($fields['user_office']) |select -first 1).value = $LSOfficeID
   ($ie.document.IHTMLDocument3_getElementsByName($fields['user_program']) |select -first 1).value = $LSProgramID
-  Start-Sleep -Seconds 5
   
+  write-debug "Submitting Page 1"
   
   ($ie.document.IHTMLDocument3_getElementsByName("submit_button") |select -first 1).click()
   while ($ie.Busy -eq $true) { Start-Sleep -Seconds 1; }
   
-  $e = get-legalservererrors $ie
-  if ($e) {
-    write-error $e
-    break;
-  }
-  
+  test-legalservererrors $ie
+   
   #Page 2 - Contact Information
   # Check to see if we have a first name field
   if ( ($ie.document.IHTMLDocument3_getElementsByName($fields['user_first_name']) |select -first 1) ) {
@@ -152,16 +161,13 @@ Process {
     ($ie.document.IHTMLDocument3_getElementsByName($fields['user_middle_name']) | select -first 1).value = $middleName
     ($ie.document.IHTMLDocument3_getElementsByName($fields['user_email']) | select -first 1).value = $emailAddress
     ($ie.document.IHTMLDocument3_getElementsByName($fields['user_phone']) | select -first 1).value = $phone
-    Start-Sleep -Seconds 5
     
+    write-debug "Submitting Page 2"  
     ($ie.document.IHTMLDocument3_getElementsByName("submit_button") |select -first 1).click()
     while ($ie.Busy -eq $true) { Start-Sleep -Seconds 1; }
     
-    $e = get-legalservererrors $ie
-    if ($e) {
-      write-error $e
-      break;
-    }
+    test-legalservererrors $ie
+  
     
     
   } else {
@@ -173,21 +179,17 @@ Process {
   if (($ie.document.IHTMLDocument3_getElementById($fields["organization_donotsetbutton"])) ) {
     # click the "Do not set Organization" button
     ($ie.document.IHTMLDocument3_getElementById($fields["organization_donotsetbutton"])).click()
-    Start-Sleep -Seconds 5
-    
+   
+    write-debug "Submitting Page 3"
     ($ie.document.IHTMLDocument3_getElementsByName("submit_button") |select -first 1).click()
     while ($ie.Busy -eq $true) { Start-Sleep -Seconds 1; }
     
-    $e = get-legalservererrors $ie
-    if ($e) {
-      write-error $e
-      break;
-    }
-    
-    } else {
+    test-legalservererrors $ie
+   
+  } else {
       write-error "Unexpected page - expected to be on the Organization Affiliation page"
       break;
-    }
+  }
   
   #Page 4 - Password
   if (($ie.document.IHTMLDocument3_getElementsByName($fields['user_password']))) {
@@ -195,46 +197,26 @@ Process {
     ($ie.document.IHTMLDocument3_getElementsByTagName("input") | where {$_.type -eq "radio" -and $_.value -like "t"} | select -first 1).checked = $true
     ($ie.document.IHTMLDocument3_getElementsByName($fields['user_password']) | select -first 1).value = $password
     ($ie.document.IHTMLDocument3_getElementsByName($fields['user_confirm_password']) | select -first 1).value = $password
-    Start-Sleep -Seconds 5
     
+    write-debug "Submitting Page 4"
     ($ie.document.IHTMLDocument3_getElementsByName("submit_button") |select -first 1).click()
     
     while ($ie.Busy -eq $true) { Start-Sleep -Seconds 1; }
     
-    $e = get-legalservererrors $ie
-    if ($e) {
-      write-error $e
-      break;
-    }
+    test-legalservererrors $ie
 
   } else {
     write-error "Unexpected page - expected to be on the Password page."
     break;
   }
   
+  } catch {
+    write-error $_
+  }
+  
 }
 
 End {
+  write-debug "Closing IE"
   $ie.quit()
 }
-
-<#  
-  $program_IDs = 
-  @{
-    "Administration" = "257739";
-    "Asian Outreach Unit" = "257746";
-    "BU" = "257756";
-    "CASLS" = "257769";
-    "Consumer Rights Project" = "257800";
-    "CORI" = "257830";
-    "Elderly" = "260843";
-    "Employment" = "257859";
-    "Family" = "257878";
-    "Health" = "260844";
-    "Housing" = "257972";
-    "Immigration" = "257988";
-    "Medicare Advocacy Project" = "258004";
-    "Welfare" = "258019";
-    "Demo" = "256123";
-    }
-#> 
