@@ -100,7 +100,7 @@ Begin {
 
   # Create new IE COM object and login to Legal Server
   $ie = New-Object -com internetexplorer.application;
-  $ie.visible = $true;
+  #$ie.visible = $true;
   $ie.navigate($loginUrl);
   while ($ie.Busy -eq $true) { Start-Sleep -Seconds 1; }
   
@@ -215,7 +215,7 @@ Process {
 }
 
 End {
-  #$ie.quit()
+  $ie.quit()
 }
 
 <#  
