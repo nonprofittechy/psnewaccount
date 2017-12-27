@@ -80,7 +80,11 @@ function VerifyAccount($user, $adDomainControllerHostName) {
 		OutputLog("*** WARNING *** User's Active Directory account "  + $user.name + " (" + $user.samAccountName + ")" + " appears not to have been created. Please wait a few minutes and verify account creation. Mailbox may need to be created manually.")
 	} else {
 		OutputLog("Successfully created new user in Active Directory: " + $user.name + ", login name: " + $user.samAccountName + ", Department: " + $user.department )
-		
+    
+		if ($user.accountExpirationDate) {
+      $formattedDate = get-date $user.accountExpirationDate -format "MM/dd/yyyy"
+    }
+    
 		$userObj = @{"Title" = $user.name; 
 				   "Username" = $user.samAccountName;
 				   "Password" = $user.clearTextPassphrase;
@@ -90,8 +94,13 @@ function VerifyAccount($user, $adDomainControllerHostName) {
 				   "Department" = $user.department;
 				   "emailAddress" = $user.emailAddress;
 				   "role" = $user.title;
-				   "accountExpirationDate" = $user.accountExpirationDate;
-				   "SharedFolder" = $user.userSharedFolderOther
+				   "accountExpirationDate" = $formattedDate;
+				   "SharedFolder" = $user.userSharedFolderOther;
+           "GivenName" = $user.givenName;
+           "Surname" = $user.sn;
+           "origUnit" = $user.origUnit;
+           "middleName" = $user.mi;
+           "phone" = $user.phone
 				  }
 	
 		# $global:userSummary += new-object psobject -property $userObj
