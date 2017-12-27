@@ -78,7 +78,7 @@ Begin {
   function test-legalservererrors ($ie) {
     $e = get-legalservererrors $ie
     if ( $e ) {
-      throw $e -replace '<[^>]+>|(\&nbsp\;)','' # clean the HTML tags from the error in Legal Server
+      throw ($e -replace '<[^>]+>|(\&nbsp\;)','') + " : Skipping Legal Server account for username " +  $username + ", Name: " + $givenname + " " + $surname # clean the HTML tags from the error in Legal Server
     }
   }
   
