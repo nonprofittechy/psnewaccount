@@ -16,7 +16,7 @@
 #
 ##############################################################
 
-# Use implicit remoting to connect to server for Exchange cmdlets (and account creation)
+# Use implicit remoting to connect to Server for Exchange cmdlets (and account creation)
 # import the provision.variables.ps1 file
 $cwd = split-path $myinvocation.mycommand.path
 $variablesPath = Join-path $cwd  provision.variables.ps1
@@ -60,6 +60,15 @@ function ProvisionInputCSV($filename) {
 	
 	foreach ($user in $users) {
 		
+    $origUnit = $user.Unit
+		# do some input cleanup for the more complicated unit names
+		switch -regex ($user.Unit) {
+			"Consumer" {$user.Unit = "Consumer Rights Project"}
+#			"(Elder)|(Health)" {$user.Unit = "Elder, Health, Disability"}
+			"(AOU)|(Asian)" {$user.Unit = "Asian Outreach Unit"}
+			"Cambridge" {$user.Unit = "CASLS"}
+			"University" {$user.Unit = "BU"} 
+		}
 		
 		$ht = @{'givenName'=	$user."First Name".trimEnd();
 				'sn'=			$user."Last Name".trimEnd();
@@ -67,7 +76,8 @@ function ProvisionInputCSV($filename) {
 				'phone' = 		$user."Telephone".trimEnd();
 				'title'=		$user.Title.trimEnd();
 				'department'=	$user.Unit.trimEnd();
-				'manager'=		$user.Manager.trimEnd()
+				'manager'=		$user.Manager.trimEnd();
+        'origUnit'=   $user.origUnit
 				}
 
 		# check to see if account expiration date was set and is a valid date in the future
@@ -157,7 +167,7 @@ function CreateUser($userinfo) {
 		-Description ($userinfo.title + ": " + $userinfo.department) `
 		-AccountPassword $securePassphrase `
 		-accountExpirationDate ($userinfo.accountExpirationDate) `
-		-HomePage ($Office365MySitesBaseURL + $userinfo.samAccountName) `
+		-HomePage ($Office365MySitesBaseURL + $userinfo.upn) `
 		-Server $DC
 	
 	#	Wait up to 30 seconds for account creation to be complete
@@ -194,19 +204,6 @@ function CreateUser($userinfo) {
 				       -replace @{userSharedFolder=$userSharedFolder;userSharedFolderOther=$userSharedFolderOther}
 		}
 		
-		# add ORG2/DOMAIN attorneys to the "attorneys" distribution list and paralegals to the "paralegals" distribution list
-		if ( ($userinfo.title -match "Attorney" ) ) {
-			if (($userinfo.department -match "ORG2")) {
-				$null = Add-ADGroupMember -identity "_Attorneys-ORG2" -members $userinfo.samAccountName
-			} else {
-				$null = Add-ADGroupMember -identity "_Attorneys-DOMAIN" -members $userinfo.samAccountName
-			}
-		}
-		
-		if ( ($userinfo.title -match "Paralegal" ) ) { 
-			$null = Add-ADGroupMember -identity "_Paralegals-DOMAIN" -members $userinfo.samAccountName
-		}
-		
 		# add the groups from the template object
 		foreach($group in $template.memberOf) {
 			$null = Add-ADGroupMember -identity $group -members $userinfo.samAccountName
@@ -228,11 +225,14 @@ function CreateUser($userinfo) {
 #					Action
 #########################################################################################
 
-$csvFile = get-FileName("c:\")
+$csvFile = get-FileName(".\")
 
 if(!($csvFile -eq "" ) -and (test-path $csvFile)) {
 	provisionInputCSV($csvFile) | provision
 	export-keepasscsv -path $csvFilePath
+  
+  # Add a user account into Legal Server
+  #$global:userSummary | new-legalserveraccount -loginURL $lsLoginURL -newUserURL $lsNewUserURL -adminUsername $lsUsername -adminPassword $lsAdminPassword
 	
 	write-host "`r`n`r`nCreated " ($global:userSummary.length) " new users:"
 	$global:userSummary | select username, emailaddress, role, department, SharedFolder | format-table
