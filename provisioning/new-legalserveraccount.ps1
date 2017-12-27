@@ -43,6 +43,8 @@ new-legalserveraccount -adminUsername [USERNAME] -adminPassword [PASSWORD] -logi
   Reference: https://cmdrkeene.com/automating-internet-explorer-with-powershell
   see also: https://www.sepago.com/blog/2016/05/03/powershell-exception-0x800a01b6-while-using-getelementsbytagname-getelementsbyname
   https://msdn.microsoft.com/en-us/library/aa752084(v=vs.85).aspx
+  
+  Licensed under GPLv3. See included license.md in this folder or https://www.gnu.org/licenses/gpl.html
 .LINK
 https://github.com/nonprofittechy/psnewaccount
 #>
