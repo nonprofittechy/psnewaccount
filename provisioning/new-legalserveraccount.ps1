@@ -88,6 +88,12 @@ Process {
     "password_reset"= $true 
   }    
 
+  if ($accountExpirationDate) {
+    $user_params['date_end'] = $accountExpirationDate
+  }
+
+  
+
   invoke-webrequest -Method POST -Uri ($loginURL + "/api/v1/users") -Headers @{ Authorization = "Basic "+ [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes("$($adminUsername):$($adminPassword)")); "Content-Type"="application/json"} -Body ($user_params | convertto-json)
   
   } catch {
